@@ -49,6 +49,7 @@ import {
   WETH9MockedFactory,
   WETHGatewayFactory,
   FlashLiquidationAdapterFactory,
+  FullDeploymentFactory,
 } from '../types';
 import {
   withSaveAndVerify,
@@ -629,3 +630,11 @@ export const deployFlashLiquidationAdapter = async (
     args,
     verify
   );
+
+export const deployFullDeployment = async () => 
+  withSaveAndVerify(
+    await new FullDeploymentFactory(await getFirstSigner()).deploy(),
+    eContractid.FullDeployment,
+    [],
+    false
+  )

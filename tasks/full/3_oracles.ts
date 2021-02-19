@@ -58,7 +58,7 @@ task('full:deploy-oracles', 'Deploy oracles for dev enviroment')
           verify
         ); 
       }
-
+      
       const lendingRateOracle = notFalsyOrZeroAddress(lendingRateOracleAddress)
         ? await getLendingRateOracle(lendingRateOracleAddress)
         : await deployLendingRateOracle(verify);
@@ -68,7 +68,7 @@ task('full:deploy-oracles', 'Deploy oracles for dev enviroment')
       //if (!lendingRateOracleAddress) {
       await setInitialMarketRatesInRatesOracleByHelper(
         lendingRateOracles,
-        tokensAddressesWithoutUsd,
+        tokensAddressesWithoutUsd, // reserveAssets is identical to tokensAddressesWithoutUsd
         lendingRateOracle,
         admin
       );
