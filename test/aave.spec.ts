@@ -20,6 +20,7 @@ import VariableDebtToken from '../artifacts/contracts/protocol/tokenization/Vari
 import DefaultReserveInterestRateStrategy from '../artifacts/contracts/protocol/lendingpool/DefaultReserveInterestRateStrategy.sol/DefaultReserveInterestRateStrategy.json'
 import WETHGateway from '../artifacts/contracts/misc/WETHGateway.sol/WETHGateway.json'
 import LendingRateOracle from '../artifacts/contracts/mocks/oracle/LendingRateOracle.sol/LendingRateOracle.json'
+import ERC20 from '../artifacts/contracts/mocks/tokens/MintableERC20.sol/MintableERC20.json'
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 const HALF_RAY = BigNumber.from(10).pow(26).mul(5)
@@ -35,10 +36,6 @@ enum InterestRateMode {NONE, STABLE, VARIABLE}
 
 export function weiToEther(n: BigNumber): number{
     return n.mul(1000).div(BigNumber.from(10).pow(18)).toNumber() / 1000
-}
-
-export function etherToWei(n: number): BigNumber{
-    return BigNumber.from(1e10).mul(n * 1e8)
 }
 
 export async function logUser(pool: Contract, userAddr: string): Promise<void> {
@@ -69,6 +66,8 @@ interface AAVEFixture {
     rateOracle: Contract
 
     weth: ReserveData
+    aaa: ReserveData
+
     gateway: Contract
 }
 
@@ -85,7 +84,7 @@ async function initReserve(
     poolAdmin: Wallet,
     fixture: AAVEFixture,
     token: ContractJSON,
-    args: [],
+    args: any[],
     ltv: BigNumberish,
     liquidationThreshold: BigNumberish,
     liquidationBonus: BigNumberish,
@@ -209,6 +208,7 @@ async function aaveFixture([admin]: Wallet[], provider: MockProvider): Promise<A
 
     // 5. initialize tokens
     ret.weth = await initReserve(admin, ret, WETH, [], 7000, 7500, 10500, _1_ETH)
+    ret.aaa = await initReserve(admin, ret, ERC20, ['aaa', 'aaa', 18], 7000, 7500, 10500, _1_ETH)
 
     // 6. gateway
     ret.gateway = await deployContract(admin, WETHGateway, [ret.weth.asset.address], overrides)
@@ -221,13 +221,17 @@ describe('weth', () => {
 
     it('deposit borrow repay withdraw', async () => {
         const [admin, bob] = await waffle.provider.getWallets()
-
         const loader = await waffle.createFixtureLoader([admin], waffle.provider)
         let fixture = await loader(aaveFixture)
-        // admin deposit 10000 eth
+
+        const aaaSupply = 1000000
+
+        await fixture.aaa.asset.mint(_1_ETH.mul(aaaSupply), overrides)
+
+        // admin deposit 1000 eth
         await fixture.gateway.connect(admin).depositETH(
             fixture.pool.address,
-            bob.address,
+            admin.address,
             0,
             {
                 ...overrides,
@@ -235,31 +239,41 @@ describe('weth', () => {
             }
         )
 
-        // 1. deposit 1 eth
-        await fixture.gateway.connect(bob).depositETH(
-            fixture.pool.address,
+
+        // admin deposit all remained aaa
+        await fixture.aaa.asset.approve(fixture.pool.address, _1_ETH.mul(aaaSupply - 200))
+        await fixture.pool.deposit(
+            fixture.aaa.asset.address,
+            _1_ETH.mul(aaaSupply - 200),
+            admin.address,
+            0
+        )
+
+        // admin transfer 200 aa to bob
+        await (<any>fixture.aaa.asset.transfer)(bob.address, _1_ETH.mul(200), overrides)
+
+        // 1. bob deposit 10 aaa
+        await fixture.aaa.asset.connect(bob).approve(fixture.pool.address, _1_ETH.mul(100))
+        await fixture.pool.connect(bob).deposit(
+            fixture.aaa.asset.address,
+            _1_ETH.mul(100),
             bob.address,
-            0,
-            {
-                ...overrides,
-                value: _1_ETH
-            }
+            0
         )
 
         // log user
         await logUser(fixture.pool, bob.address)
 
-        // 2. borrow 6 eth
-
+        // 2. bob borrow 6 eth
         // approve
         fixture.weth.stableDebt.connect(bob).approveDelegation(
             fixture.gateway.address,
-            etherToWei(0.6)
+            _1_ETH.mul(6)
         )
 
         await fixture.gateway.connect(bob).borrowETH(
             fixture.pool.address,
-            _1_ETH.mul(0.6),
+            _1_ETH.mul(6),
             InterestRateMode.STABLE,
             0
         )
