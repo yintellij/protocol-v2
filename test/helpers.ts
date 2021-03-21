@@ -21,6 +21,8 @@ import LendingRateOracle from "../artifacts/contracts/mocks/oracle/LendingRateOr
 import WETH from "../artifacts/contracts/mocks/dependencies/weth/WETH9.sol/WETH9.json";
 import ERC20 from "../artifacts/contracts/mocks/tokens/MintableERC20.sol/MintableERC20.json";
 import WETHGateway from "../artifacts/contracts/misc/WETHGateway.sol/WETHGateway.json";
+import CollateralManager from '../artifacts/contracts/protocol/lendingpool/LendingPoolCollateralManager.sol/LendingPoolCollateralManager.json'
+
 import {waffle} from "hardhat";
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
@@ -162,6 +164,7 @@ async function initReserve(
 
 export async function aaveFixture([alice, bob]: Wallet[], provider: MockProvider): Promise<AAVEFixture> {
     let ret: AAVEFixture = <any>{}
+
     // before all: linking
     ret.genericLogic = await deployContract(alice, GenericLogic, [], overrides)
     ValidationLogic.bytecode = linkBytecode(ValidationLogic, {GenericLogic: ret.genericLogic.address})
@@ -184,10 +187,12 @@ export async function aaveFixture([alice, bob]: Wallet[], provider: MockProvider
     await ret.pool.initialize(ret.addressProvider.address, overrides)
     await ret.addressProvider.setLendingPoolImpl(ret.pool.address)
 
-    // 3. deploy configurator
+    // 3. deploy configurator and collateral manager
     ret.configurator = await deployContract(alice, Configurator, [], overrides)
     await ret.configurator.initialize(ret.addressProvider.address, overrides)
     await ret.addressProvider.setLendingPoolConfiguratorImpl(ret.configurator.address, overrides)
+    ret.collateralManager = await deployContract(alice, CollateralManager, [], overrides)
+    await ret.addressProvider.setLendingPoolCollateralManager(ret.collateralManager.address, overrides)
 
     // 4. deploy oracle
     ret.priceOracle = await deployContract(alice, PriceOracle, [], overrides)
@@ -218,13 +223,14 @@ export async function aaveFixture([alice, bob]: Wallet[], provider: MockProvider
     )
 
 
-    // alice deposit all remained aaa
-    await ret.aaa.asset.approve(ret.pool.address, _1_ETH.mul(aaaSupply - 200))
+    // alice deposit all aaa
+    await ret.aaa.asset.approve(ret.pool.address, _1_ETH.mul(aaaSupply - 200), overrides)
     await ret.pool.deposit(
         ret.aaa.asset.address,
         _1_ETH.mul(aaaSupply - 200),
         alice.address,
-        0
+        0,
+        overrides
     )
 
     // alice transfer 200 aa to bob

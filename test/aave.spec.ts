@@ -63,6 +63,9 @@ describe('weth', () => {
             .setAssetPrice(fixture.aaa.asset.address, utils.parseEther('0.9'))
 
         expect((await getUserData(fixture.pool, bob.address)).healthFactor).to.lessThan(1)
+
+        // liquidation
+
     })
 
 })
