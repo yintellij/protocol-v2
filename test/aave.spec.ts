@@ -257,27 +257,22 @@ describe('weth', () => {
         // admin transfer 200 aa to bob
         await (<any>fixture.aaa.asset.transfer)(bob.address, _1_ETH.mul(200), overrides)
 
-        // 1. bob deposit 100 aaa
-        await fixture.aaa.asset.connect(bob).approve(fixture.pool.address, _1_ETH.mul(100))
-        await fixture.pool.connect(bob).deposit(
-            fixture.aaa.asset.address,
-            _1_ETH.mul(100),
-            bob.address,
-            0
-        )
+        // 1. bob deposit 10 eth
+        await fixture.gateway.connect(bob).depositETH(fixture.pool.address, bob.address, 0, {
+            ...overrides,
+            value: _1_ETH.mul(10)
+        })
+
 
         // log user
-        await logUser(fixture.pool, bob.address)
+        console.log('bob = ' + bob.address)
+        console.log('gateway = ' + fixture.gateway.address)
 
         // 2. bob borrow 6 eth
-        // allow mint
-
         await fixture.weth.stableDebt.connect(bob).approveDelegation(
             fixture.gateway.address,
             _1_ETH.mul(6)
         )
-
-        console.log(await fixture.weth.stableDebt.borrowAllowance(bob.address, fixture.gateway.address))
 
         await fixture.gateway.connect(bob).borrowETH(
             fixture.pool.address,
@@ -286,7 +281,13 @@ describe('weth', () => {
             0
         )
 
-        await logUser(fixture.pool, bob.address)
+        // withdraw all
+        await fixture.weth.atoken.connect(bob).approve(fixture.gateway.address, _1_ETH.mul(10))
+        await fixture.gateway.connect(bob).withdrawETH(
+            fixture.pool.address,
+            _1_ETH.mul(10),
+            bob.address
+        )
     })
 
 })

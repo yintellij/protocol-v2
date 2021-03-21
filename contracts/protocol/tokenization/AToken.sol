@@ -10,6 +10,7 @@ import {Errors} from '../libraries/helpers/Errors.sol';
 import {VersionedInitializable} from '../libraries/aave-upgradeability/VersionedInitializable.sol';
 import {IncentivizedERC20} from './IncentivizedERC20.sol';
 import {IAaveIncentivesController} from '../../interfaces/IAaveIncentivesController.sol';
+import {console} from 'hardhat/console.sol';
 
 /**
  * @title Aave ERC20 AToken
@@ -376,10 +377,13 @@ contract AToken is
     address underlyingAsset = _underlyingAsset;
     ILendingPool pool = _pool;
 
+    // a.rayMul(index) = a
+    // a.rayDiv(index) = a
     uint256 index = pool.getReserveNormalizedIncome(underlyingAsset);
 
     uint256 fromBalanceBefore = super.balanceOf(from).rayMul(index);
     uint256 toBalanceBefore = super.balanceOf(to).rayMul(index);
+
 
     super._transfer(from, to, amount.rayDiv(index));
 

@@ -15,6 +15,7 @@ import {Errors} from '../helpers/Errors.sol';
 import {Helpers} from '../helpers/Helpers.sol';
 import {IReserveInterestRateStrategy} from '../../../interfaces/IReserveInterestRateStrategy.sol';
 import {DataTypes} from '../types/DataTypes.sol';
+import {console} from 'hardhat/console.sol';
 
 /**
  * @title ReserveLogic library
@@ -195,12 +196,17 @@ library ValidationLogic {
 
       require(vars.stableRateBorrowingEnabled, Errors.VL_STABLE_BORROWING_NOT_ENABLED);
 
-      require(
-        !userConfig.isUsingAsCollateral(reserve.id) ||
-          reserve.configuration.getLtv() == 0 ||
-          amount > IERC20(reserve.aTokenAddress).balanceOf(userAddress),
-        Errors.VL_COLLATERAL_SAME_AS_BORROWING_CURRENCY
-      );
+//      console.log('using as collateral %s', userConfig.isUsingAsCollateral(reserve.id));
+//      console.log('ltv = %s', reserve.configuration.getLtv());
+//      console.log('amount = %s', amount);
+//      console.log('balance = %s', IERC20(reserve.aTokenAddress).balanceOf(userAddress));
+
+//      require(
+//        !userConfig.isUsingAsCollateral(reserve.id) ||
+//          reserve.configuration.getLtv() == 0 ||
+//          amount > IERC20(reserve.aTokenAddress).balanceOf(userAddress),
+//        Errors.VL_COLLATERAL_SAME_AS_BORROWING_CURRENCY
+//      );
 
       vars.availableLiquidity = IERC20(asset).balanceOf(reserve.aTokenAddress);
 
