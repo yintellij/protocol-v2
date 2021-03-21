@@ -196,7 +196,7 @@ library ValidationLogic {
       require(vars.stableRateBorrowingEnabled, Errors.VL_STABLE_BORROWING_NOT_ENABLED);
 
       require(
-//        !userConfig.isUsingAsCollateral(reserve.id) ||
+        !userConfig.isUsingAsCollateral(reserve.id) ||
           reserve.configuration.getLtv() == 0 ||
           amount > IERC20(reserve.aTokenAddress).balanceOf(userAddress),
         Errors.VL_COLLATERAL_SAME_AS_BORROWING_CURRENCY

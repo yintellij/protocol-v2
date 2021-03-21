@@ -231,18 +231,18 @@ describe('weth', () => {
             0,
             {
                 ...overrides,
-                value: _1_ETH.mul(10000)
+                value: _1_ETH.mul(1000)
             }
         )
 
-        // 1. deposit 10 eth
+        // 1. deposit 1 eth
         await fixture.gateway.connect(bob).depositETH(
             fixture.pool.address,
             bob.address,
             0,
             {
                 ...overrides,
-                value: _1_ETH.mul(10)
+                value: _1_ETH
             }
         )
 
@@ -254,12 +254,12 @@ describe('weth', () => {
         // approve
         fixture.weth.stableDebt.connect(bob).approveDelegation(
             fixture.gateway.address,
-            _1_ETH.mul(6)
+            etherToWei(0.6)
         )
 
         await fixture.gateway.connect(bob).borrowETH(
             fixture.pool.address,
-            _1_ETH.mul(6),
+            _1_ETH.mul(0.6),
             InterestRateMode.STABLE,
             0
         )
