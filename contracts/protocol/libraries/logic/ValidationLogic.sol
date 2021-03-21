@@ -195,18 +195,13 @@ library ValidationLogic {
       //check if the borrow mode is stable and if stable rate borrowing is enabled on this reserve
 
       require(vars.stableRateBorrowingEnabled, Errors.VL_STABLE_BORROWING_NOT_ENABLED);
-
-//      console.log('using as collateral %s', userConfig.isUsingAsCollateral(reserve.id));
-//      console.log('ltv = %s', reserve.configuration.getLtv());
-//      console.log('amount = %s', amount);
-//      console.log('balance = %s', IERC20(reserve.aTokenAddress).balanceOf(userAddress));
-
-//      require(
-//        !userConfig.isUsingAsCollateral(reserve.id) ||
-//          reserve.configuration.getLtv() == 0 ||
-//          amount > IERC20(reserve.aTokenAddress).balanceOf(userAddress),
-//        Errors.VL_COLLATERAL_SAME_AS_BORROWING_CURRENCY
-//      );
+      
+      require(
+        !userConfig.isUsingAsCollateral(reserve.id) ||
+          reserve.configuration.getLtv() == 0 ||
+          amount > IERC20(reserve.aTokenAddress).balanceOf(userAddress),
+        Errors.VL_COLLATERAL_SAME_AS_BORROWING_CURRENCY
+      );
 
       vars.availableLiquidity = IERC20(asset).balanceOf(reserve.aTokenAddress);
 
