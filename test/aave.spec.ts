@@ -168,6 +168,11 @@ async function initReserve(
     // enable borrowing
     await fixture.configurator.enableBorrowingOnReserve(ret.asset.address, true)
     await fixture.priceOracle.setAssetPrice(ret.asset.address, initialPrice)
+
+    const reverseData = await fixture.pool.getReserveData(ret.asset.address)
+    ret.atoken = ret.atoken.attach(reverseData[7])
+    ret.stableDebt = ret.stableDebt.attach(reverseData[8])
+    ret.varDebt = ret.varDebt.attach(reverseData[9])
     return ret
 }
 
@@ -252,7 +257,7 @@ describe('weth', () => {
         // admin transfer 200 aa to bob
         await (<any>fixture.aaa.asset.transfer)(bob.address, _1_ETH.mul(200), overrides)
 
-        // 1. bob deposit 10 aaa
+        // 1. bob deposit 100 aaa
         await fixture.aaa.asset.connect(bob).approve(fixture.pool.address, _1_ETH.mul(100))
         await fixture.pool.connect(bob).deposit(
             fixture.aaa.asset.address,
@@ -265,11 +270,14 @@ describe('weth', () => {
         await logUser(fixture.pool, bob.address)
 
         // 2. bob borrow 6 eth
-        // approve
-        fixture.weth.stableDebt.connect(bob).approveDelegation(
+        // allow mint
+
+        await fixture.weth.stableDebt.connect(bob).approveDelegation(
             fixture.gateway.address,
             _1_ETH.mul(6)
         )
+
+        console.log(await fixture.weth.stableDebt.borrowAllowance(bob.address, fixture.gateway.address))
 
         await fixture.gateway.connect(bob).borrowETH(
             fixture.pool.address,
