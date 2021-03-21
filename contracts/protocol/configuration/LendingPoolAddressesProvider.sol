@@ -99,7 +99,7 @@ contract LendingPoolAddressesProvider is Ownable, ILendingPoolAddressesProvider 
    * @param pool The new LendingPool implementation
    **/
   function setLendingPoolImpl(address pool) external override onlyOwner {
-    _updateImpl(LENDING_POOL, pool);
+    _updateSimple(LENDING_POOL, pool);
     emit LendingPoolUpdated(pool);
   }
 
@@ -117,7 +117,7 @@ contract LendingPoolAddressesProvider is Ownable, ILendingPoolAddressesProvider 
    * @param configurator The new LendingPoolConfigurator implementation
    **/
   function setLendingPoolConfiguratorImpl(address configurator) external override onlyOwner {
-    _updateImpl(LENDING_POOL_CONFIGURATOR, configurator);
+    _updateSimple(LENDING_POOL_CONFIGURATOR, configurator);
     emit LendingPoolConfiguratorUpdated(configurator);
   }
 
@@ -206,6 +206,10 @@ contract LendingPoolAddressesProvider is Ownable, ILendingPoolAddressesProvider 
     } else {
       proxy.upgradeToAndCall(newAddress, params);
     }
+  }
+
+  function _updateSimple(bytes32 id, address newAddress) internal{
+    _addresses[id] = newAddress;
   }
 
   function _setMarketId(string memory marketId) internal {

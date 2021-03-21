@@ -12,6 +12,7 @@ import {ReserveConfiguration} from '../protocol/libraries/configuration/ReserveC
 import {UserConfiguration} from '../protocol/libraries/configuration/UserConfiguration.sol';
 import {Helpers} from '../protocol/libraries/helpers/Helpers.sol';
 import {DataTypes} from '../protocol/libraries/types/DataTypes.sol';
+import {console} from 'hardhat/console.sol';
 
 contract WETHGateway is IWETHGateway, Ownable {
   using ReserveConfiguration for DataTypes.ReserveConfigurationMap;

@@ -18,6 +18,7 @@ import {IInitializableDebtToken} from '../../interfaces/IInitializableDebtToken.
 import {IInitializableAToken} from '../../interfaces/IInitializableAToken.sol';
 import {IAaveIncentivesController} from '../../interfaces/IAaveIncentivesController.sol';
 import {ILendingPoolConfigurator} from '../../interfaces/ILendingPoolConfigurator.sol';
+import {console} from 'hardhat/console.sol';
 
 /**
  * @title LendingPoolConfigurator contract
@@ -83,7 +84,6 @@ contract LendingPoolConfigurator is VersionedInitializable, ILendingPoolConfigur
           input.params
         )
       );
-
     address stableDebtTokenProxyAddress =
       _initTokenWithProxy(
         input.stableDebtTokenImpl,
@@ -122,7 +122,7 @@ contract LendingPoolConfigurator is VersionedInitializable, ILendingPoolConfigur
       input.interestRateStrategyAddress
     );
 
-    DataTypes.ReserveConfigurationMap memory currentConfig =
+  DataTypes.ReserveConfigurationMap memory currentConfig =
       pool.getConfiguration(input.underlyingAsset);
 
     currentConfig.setDecimals(input.underlyingAssetDecimals);
@@ -297,7 +297,7 @@ contract LendingPoolConfigurator is VersionedInitializable, ILendingPoolConfigur
     //(otherwise a loan against the asset would cause instantaneous liquidation)
     require(ltv <= liquidationThreshold, Errors.LPC_INVALID_CONFIGURATION);
 
-    if (liquidationThreshold != 0) {
+  if (liquidationThreshold != 0) {
       //liquidation bonus must be bigger than 100.00%, otherwise the liquidator would receive less
       //collateral than needed to cover the debt
       require(
@@ -305,15 +305,15 @@ contract LendingPoolConfigurator is VersionedInitializable, ILendingPoolConfigur
         Errors.LPC_INVALID_CONFIGURATION
       );
 
-      //if threshold * bonus is less than PERCENTAGE_FACTOR, it's guaranteed that at the moment
+    //if threshold * bonus is less than PERCENTAGE_FACTOR, it's guaranteed that at the moment
       //a loan is taken there is enough collateral available to cover the liquidation bonus
       require(
         liquidationThreshold.percentMul(liquidationBonus) <= PercentageMath.PERCENTAGE_FACTOR,
         Errors.LPC_INVALID_CONFIGURATION
       );
-    } else {
+  } else {
       require(liquidationBonus == 0, Errors.LPC_INVALID_CONFIGURATION);
-      //if the liquidation threshold is being set to 0,
+    //if the liquidation threshold is being set to 0,
       // the reserve is being disabled as collateral. To do so,
       //we need to ensure no liquidity is deposited
       _checkNoLiquidity(asset);
@@ -322,7 +322,6 @@ contract LendingPoolConfigurator is VersionedInitializable, ILendingPoolConfigur
     currentConfig.setLtv(ltv);
     currentConfig.setLiquidationThreshold(liquidationThreshold);
     currentConfig.setLiquidationBonus(liquidationBonus);
-
     pool.setConfiguration(asset, currentConfig.data);
 
     emit CollateralConfigurationChanged(asset, ltv, liquidationThreshold, liquidationBonus);

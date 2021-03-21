@@ -1,9 +1,9 @@
 // @ts-ignore
 import { ethers, waffle } from 'hardhat'
-import { Contract, Wallet, utils } from 'ethers'
+import {Contract, Wallet, utils, BigNumber, providers, BigNumberish} from 'ethers'
 import { MockProvider } from 'ethereum-waffle'
-import type { providers } from "ethers";
 import { linkBytecode } from './utils'
+import type { ContractJSON } from "ethereum-waffle/dist/esm/ContractJSON";
 
 import { expect } from 'chai'
 import WETH from '../artifacts/contracts/mocks/dependencies/weth/WETH9.sol/WETH9.json'
@@ -13,12 +13,47 @@ import AddressProvider from '../artifacts/contracts/protocol/configuration/Lendi
 import Configurator from '../artifacts/contracts/protocol/lendingpool/LendingPoolConfigurator.sol/LendingPoolConfigurator.json'
 import LendingPool from '../artifacts/contracts/protocol/lendingpool/LendingPool.sol/LendingPool.json'
 import ReserveLogic from '../artifacts/contracts/protocol/libraries/logic/ReserveLogic.sol/ReserveLogic.json'
+import PriceOracle from '../artifacts/contracts/mocks/oracle/PriceOracle.sol/PriceOracle.json'
+import AToken from '../artifacts/contracts/protocol/tokenization/AToken.sol/AToken.json'
+import StableDebtToken from '../artifacts/contracts/protocol/tokenization/StableDebtToken.sol/StableDebtToken.json'
+import VariableDebtToken from '../artifacts/contracts/protocol/tokenization/VariableDebtToken.sol/VariableDebtToken.json'
+import DefaultReserveInterestRateStrategy from '../artifacts/contracts/protocol/lendingpool/DefaultReserveInterestRateStrategy.sol/DefaultReserveInterestRateStrategy.json'
+import WETHGateway from '../artifacts/contracts/misc/WETHGateway.sol/WETHGateway.json'
+import LendingRateOracle from '../artifacts/contracts/mocks/oracle/LendingRateOracle.sol/LendingRateOracle.json'
+
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
+const HALF_RAY = BigNumber.from(10).pow(26).mul(5)
 
 const deployContract = waffle.deployContract
-const link = waffle.link
+const _1_ETH = BigNumber.from(1e10).mul(1e8)
 
 const overrides: providers.TransactionRequest = {
-    gasPrice: 0
+    gasPrice: 0,
+}
+
+enum InterestRateMode {NONE, STABLE, VARIABLE}
+
+export function weiToEther(n: BigNumber): number{
+    return n.mul(1000).div(BigNumber.from(10).pow(18)).toNumber() / 1000
+}
+
+export function etherToWei(n: number): BigNumber{
+    return BigNumber.from(1e10).mul(n * 1e8)
+}
+
+export async function logUser(pool: Contract, userAddr: string): Promise<void> {
+    const r: BigNumber[] = await pool.getUserAccountData(userAddr)
+    const t = r[5].div(1e10)
+    let h: string | number = t.gte(Number.MAX_SAFE_INTEGER - 1) ? '+infinity' : t.toNumber() / 1e8
+
+    console.log({
+        totalCollateralETH: weiToEther(r[0]),
+        totalDebtETH: weiToEther(r[1]),
+        availableBorrowsETH: weiToEther(r[2]),
+        currentLiquidationThreshold:  r[3].toNumber() / 1e4,
+        ltv: r[4].toNumber() / 1e4,
+        healthFactor: h
+    })
 }
 
 interface AAVEFixture {
@@ -30,18 +65,117 @@ interface AAVEFixture {
     pool: Contract
     addressProvider: Contract
 
-    oracle: Contract
+    priceOracle: Contract
+    rateOracle: Contract
 
-    weth: Contract
+    weth: ReserveData
+    gateway: Contract
 }
 
-async function aaveFixture([alice]: Wallet[], provider: MockProvider): Promise<AAVEFixture> {
+interface ReserveData{
+    asset: Contract
+    atoken: Contract
+    stableDebt: Contract
+    varDebt: Contract
+    rateStrategy: Contract
+
+}
+
+async function initReserve(
+    poolAdmin: Wallet,
+    fixture: AAVEFixture,
+    token: ContractJSON,
+    args: [],
+    ltv: BigNumberish,
+    liquidationThreshold: BigNumberish,
+    liquidationBonus: BigNumberish,
+    initialPrice: BigNumberish
+): Promise<ReserveData> {
+    let ret : ReserveData = <any> {
+        asset: await deployContract(poolAdmin, token, args, overrides),
+    }
+
+    ret.atoken = await deployContract(poolAdmin, AToken, [], overrides)
+    await ret.atoken.initialize(
+        fixture.pool.address,
+        ZERO_ADDRESS,
+        ret.asset.address,
+        ZERO_ADDRESS,
+        await ret.asset.decimals(),
+        'a' + await ret.asset.name(),
+        'a' + await ret.asset.symbol(),
+        '0x'
+    )
+
+    ret.stableDebt = await deployContract(poolAdmin, StableDebtToken, [], overrides)
+    await ret.stableDebt.initialize(
+        fixture.pool.address,
+        ret.asset.address,
+        ZERO_ADDRESS,
+        await ret.asset.decimals(),
+        'd' + await ret.asset.name(),
+        'd' + await ret.asset.symbol(),
+        '0x'
+    )
+
+    ret.varDebt = await deployContract(poolAdmin, VariableDebtToken, [], overrides)
+    await ret.varDebt.initialize(
+        fixture.pool.address,
+        ret.asset.address,
+        ZERO_ADDRESS,
+        await ret.asset.decimals(),
+        'd' + await ret.asset.name(),
+        'd' + await ret.asset.symbol(),
+        '0x'
+    )
+
+    ret.rateStrategy = await deployContract(poolAdmin, DefaultReserveInterestRateStrategy,
+        [fixture.addressProvider.address, HALF_RAY, 0, 0, 0, 0, 0]
+    )
+
+
+    const o: Record<string, any> = {
+        aTokenImpl: ret.atoken.address,
+        stableDebtTokenImpl: ret.stableDebt.address,
+        variableDebtTokenImpl: ret.varDebt.address,
+        underlyingAssetDecimals: await ret.asset.decimals(),
+        interestRateStrategyAddress: ret.rateStrategy.address,
+        underlyingAsset: ret.asset.address,
+        treasury: ZERO_ADDRESS,
+        incentivesController: ZERO_ADDRESS,
+        underlyingAssetName: await ret.asset.name(),
+        aTokenName: await ret.atoken.name(),
+        aTokenSymbol: await ret.atoken.symbol(),
+        variableDebtTokenName: await ret.varDebt.name(),
+        variableDebtTokenSymbol: await ret.varDebt.symbol(),
+        stableDebtTokenName: await ret.stableDebt.name(),
+        stableDebtTokenSymbol: await ret.stableDebt.symbol(),
+        params: '0x'
+    }
+
+    // init reserve
+    await fixture.configurator.batchInitReserve([
+        o
+    ])
+
+    await fixture.configurator.configureReserveAsCollateral(
+        ret.asset.address,
+        ltv,
+        liquidationThreshold,
+        liquidationBonus
+    )
+
+    await fixture.priceOracle.setAssetPrice(ret.asset.address, initialPrice)
+    return ret
+}
+
+async function aaveFixture([admin]: Wallet[], provider: MockProvider): Promise<AAVEFixture> {
     let ret: AAVEFixture = <any> {}
     // before all: linking
-    ret.genericLogic = await deployContract(alice, GenericLogic, [], overrides)
+    ret.genericLogic = await deployContract(admin, GenericLogic, [], overrides)
     ValidationLogic.bytecode = linkBytecode(ValidationLogic, {GenericLogic: ret.genericLogic.address})
-    ret.validationLogic = await deployContract(alice, ValidationLogic, [], overrides)
-    ret.reserveLogic = await deployContract(alice, ReserveLogic, [], overrides)
+    ret.validationLogic = await deployContract(admin, ValidationLogic, [], overrides)
+    ret.reserveLogic = await deployContract(admin, ReserveLogic, [], overrides)
     LendingPool.bytecode = linkBytecode(LendingPool, {
         ReserveLogic: ret.reserveLogic.address,
         ValidationLogic: ret.validationLogic.address
@@ -50,32 +184,75 @@ async function aaveFixture([alice]: Wallet[], provider: MockProvider): Promise<A
 
     // 1. deploy address provider
     // set marketid = 0
-    // set alice as pool admin
-    ret.addressProvider = await deployContract(alice, AddressProvider, [0], overrides)
-    await ret.addressProvider.setPoolAdmin(alice.address, overrides)
+    ret.addressProvider = await deployContract(admin, AddressProvider, [''], overrides)
+    await ret.addressProvider.setPoolAdmin(admin.address, overrides)
 
-    // 2. deploy configurator
-    ret.configurator = await deployContract(alice, Configurator, [], overrides)
+
+    // 2. deploy lending pool
+    ret.pool = await deployContract(admin, LendingPool, [], overrides)
+    await ret.pool.initialize(ret.addressProvider.address, overrides)
+    await ret.addressProvider.setLendingPoolImpl(ret.pool.address)
+
+    // 3. deploy configurator
+    ret.configurator = await deployContract(admin, Configurator, [], overrides)
     await ret.configurator.initialize(ret.addressProvider.address, overrides)
     await ret.addressProvider.setLendingPoolConfiguratorImpl(ret.configurator.address, overrides)
 
-    // 3. deploy lendingpool
-    ret.pool = await deployContract(alice, LendingPool, [], overrides)
-    await ret.pool.initialize(ret.addressProvider.address, overrides)
+    // 4. deploy oracle
+    ret.priceOracle = await deployContract(admin, PriceOracle, [], overrides)
+    await ret.addressProvider.setPriceOracle(ret.priceOracle.address, overrides)
+    ret.rateOracle = await deployContract(admin, LendingRateOracle, [], overrides)
+    await ret.addressProvider.setLendingRateOracle(ret.rateOracle.address, overrides)
+
+    // 5. initialize tokens
+    ret.weth = await initReserve(admin, ret, WETH, [], 7000, 7500, 10500, _1_ETH)
+
+    // 6. gateway
+    ret.gateway = await deployContract(admin, WETHGateway, [ret.weth.asset.address], overrides)
+    await ret.gateway.authorizeLendingPool(ret.pool.address, overrides)
 
     return ret
 }
 
 describe('weth', () => {
 
-    it('log', async () => {
-        const wallets = await waffle.provider.getWallets()
-        const [alice, bob, carol] = wallets
+    it('deposit borrow repay withdraw', async () => {
+        const [admin, bob] = await waffle.provider.getWallets()
 
-        const loader = await waffle.createFixtureLoader(wallets, waffle.provider)
+        const loader = await waffle.createFixtureLoader([admin], waffle.provider)
         let fixture = await loader(aaveFixture)
 
-        console.log(await fixture.pool.LENDINGPOOL_REVISION())
+        // 1. deposit 10 eth
+        await fixture.gateway.connect(bob).depositETH(
+            fixture.pool.address,
+            bob.address,
+            0,
+            {
+                ...overrides,
+                value: _1_ETH.mul(10)
+            }
+        )
+
+        // log user
+        await logUser(fixture.pool, bob.address)
+
+        // 2. borrow 6 eth
+
+        // approve
+        fixture.weth.stableDebt.connect(bob).approveDelegation(
+            fixture.gateway.address,
+            _1_ETH.mul(6)
+        )
+
+        console.log('xxxx')
+        await fixture.gateway.connect(bob).borrowETH(
+            fixture.pool.address,
+            _1_ETH.mul(6),
+            InterestRateMode.STABLE,
+            0
+        )
+
+        await logUser(fixture.pool, bob.address)
     })
 
 })

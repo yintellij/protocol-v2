@@ -25,6 +25,7 @@ import {ReserveConfiguration} from '../libraries/configuration/ReserveConfigurat
 import {UserConfiguration} from '../libraries/configuration/UserConfiguration.sol';
 import {DataTypes} from '../libraries/types/DataTypes.sol';
 import {LendingPoolStorage} from './LendingPoolStorage.sol';
+import {console} from 'hardhat/console.sol';
 
 /**
  * @title LendingPool contract
@@ -115,11 +116,8 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
 
     reserve.updateState();
     reserve.updateInterestRates(asset, aToken, amount, 0);
-
     IERC20(asset).safeTransferFrom(msg.sender, aToken, amount);
-
     bool isFirstDeposit = IAToken(aToken).mint(onBehalfOf, amount, reserve.liquidityIndex);
-
     if (isFirstDeposit) {
       _usersConfig[onBehalfOf].setUsingAsCollateral(reserve.id, true);
       emit ReserveUsedAsCollateralEnabled(asset, onBehalfOf);
@@ -790,7 +788,7 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     address interestRateStrategyAddress
   ) external override onlyLendingPoolConfigurator {
     require(Address.isContract(asset), Errors.LP_NOT_CONTRACT);
-    _reserves[asset].init(
+  _reserves[asset].init(
       aTokenAddress,
       stableDebtAddress,
       variableDebtAddress,

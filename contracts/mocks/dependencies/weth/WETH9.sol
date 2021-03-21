@@ -15,8 +15,6 @@
 
 pragma solidity >=0.4.22 <=0.6.12;
 
-import {console} from 'hardhat/console.sol';
-
 contract WETH9 {
   string public name = 'Wrapped Ether';
   string public symbol = 'WETH';
@@ -35,7 +33,6 @@ contract WETH9 {
   }
 
   function deposit() public payable {
-    console.log('helloworld');
     balanceOf[msg.sender] += msg.value;
     emit Deposit(msg.sender, msg.value);
   }
