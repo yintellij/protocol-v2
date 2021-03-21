@@ -158,6 +158,7 @@ async function initReserve(
         o
     ])
 
+    // init configuration
     await fixture.configurator.configureReserveAsCollateral(
         ret.asset.address,
         ltv,
@@ -165,6 +166,8 @@ async function initReserve(
         liquidationBonus
     )
 
+    // enable borrowing
+    await fixture.configurator.enableBorrowingOnReserve(ret.asset.address, true)
     await fixture.priceOracle.setAssetPrice(ret.asset.address, initialPrice)
     return ret
 }
@@ -221,6 +224,16 @@ describe('weth', () => {
 
         const loader = await waffle.createFixtureLoader([admin], waffle.provider)
         let fixture = await loader(aaveFixture)
+        // admin deposit 10000 eth
+        await fixture.gateway.connect(admin).depositETH(
+            fixture.pool.address,
+            bob.address,
+            0,
+            {
+                ...overrides,
+                value: _1_ETH.mul(10000)
+            }
+        )
 
         // 1. deposit 10 eth
         await fixture.gateway.connect(bob).depositETH(
@@ -244,7 +257,6 @@ describe('weth', () => {
             _1_ETH.mul(6)
         )
 
-        console.log('xxxx')
         await fixture.gateway.connect(bob).borrowETH(
             fixture.pool.address,
             _1_ETH.mul(6),
