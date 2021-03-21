@@ -67,13 +67,9 @@ contract WETHGateway is IWETHGateway, Ownable {
     if (amount == type(uint256).max) {
       amountToWithdraw = userBalance;
     }
-    console.log('-- 0');
     aWETH.transferFrom(msg.sender, address(this), amountToWithdraw);
-    console.log('-- 1');
     ILendingPool(lendingPool).withdraw(address(WETH), amountToWithdraw, address(this));
-    console.log('-- 2');
     WETH.withdraw(amountToWithdraw);
-    console.log('-- 3');
     _safeTransferETH(to, amountToWithdraw);
   }
 

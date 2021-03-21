@@ -195,7 +195,7 @@ library ValidationLogic {
       //check if the borrow mode is stable and if stable rate borrowing is enabled on this reserve
 
       require(vars.stableRateBorrowingEnabled, Errors.VL_STABLE_BORROWING_NOT_ENABLED);
-      
+
       require(
         !userConfig.isUsingAsCollateral(reserve.id) ||
           reserve.configuration.getLtv() == 0 ||
