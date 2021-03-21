@@ -29,9 +29,7 @@
     "mocha": "^6.2.2",
     "solc": "0.6.12",
     "ts-node": "^8.5.4",
-    "typescript": "^3.7.3"
-  },
-  "dependencies": {
+    "typescript": "^3.7.3",
     "@openzeppelin/contracts": "^3.4.1",
     "hardhat": "npm:@salaku/hardhat"
   }

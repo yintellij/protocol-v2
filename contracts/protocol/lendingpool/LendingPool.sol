@@ -745,7 +745,6 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
 
     require(msg.sender == _reserves[asset].aTokenAddress, Errors.LP_CALLER_MUST_BE_AN_ATOKEN);
 
-    console.log('before validateTransfer');
     ValidationLogic.validateTransfer(
       from,
       _reserves,
@@ -754,7 +753,6 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
       _reservesCount,
       _addressesProvider.getPriceOracle()
     );
-    console.log('after validateTransfer');
 
     uint256 reserveId = _reserves[asset].id;
 
