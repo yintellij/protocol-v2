@@ -81,4 +81,28 @@ library MathUtils {
   {
     return calculateCompoundedInterest(rate, lastUpdateTimestamp, block.timestamp);
   }
+
+  function uintToDecimal(uint256 v, uint8 decimals) internal view returns (string memory str) {
+    uint maxlength = 100;
+    bytes memory reversed = new bytes(maxlength);
+    uint i = 0;
+    while (v != 0 || i <= decimals) {
+      uint remainder = v % 10;
+      v = v / 10;
+      reversed[i++] = bytes1(uint8(48 + remainder));
+      if(i == decimals) {
+        reversed[i++] = '.';
+        if(v == 0) {
+          reversed[i++] = '0';
+        }
+      }
+    }
+    bytes memory s = new bytes(i + 1);
+    for (uint j = 0; j <= i; j++) {
+      s[j] = reversed[i - j];
+    }
+    str = string(s);
+  }
+
+
 }

@@ -64,8 +64,16 @@ describe('weth', () => {
 
         expect((await getUserData(fixture.pool, bob.address)).healthFactor).to.lessThan(1)
 
-        // liquidation
-
+        // carol wants to execute liquidation on bob
+        await fixture.pool.connect(carol)
+            .liquidationCall(
+                fixture.weth.asset.address,
+                fixture.weth.asset.address,
+                bob.address,
+                utils.parseEther('70'),
+                false,
+                overrides
+            )
     })
 
 })

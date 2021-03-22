@@ -2,6 +2,7 @@
 pragma solidity 0.6.12;
 
 import {ERC20} from '../../dependencies/openzeppelin/contracts/ERC20.sol';
+import { console } from 'hardhat/console.sol';
 
 /**
  * @title ERC20Mintable

@@ -18,6 +18,8 @@ import {Errors} from '../libraries/helpers/Errors.sol';
 import {ValidationLogic} from '../libraries/logic/ValidationLogic.sol';
 import {DataTypes} from '../libraries/types/DataTypes.sol';
 import {LendingPoolStorage} from './LendingPoolStorage.sol';
+import {console} from 'hardhat/console.sol';
+import {MathUtils} from '../libraries/math/MathUtils.sol';
 
 /**
  * @title LendingPoolCollateralManager contract
@@ -99,6 +101,8 @@ contract LendingPoolCollateralManager is
       _reservesCount,
       _addressesProvider.getPriceOracle()
     );
+    
+    console.log("health factor = %s", MathUtils.uintToDecimal(vars.healthFactor, 18));
 
     (vars.userStableDebt, vars.userVariableDebt) = Helpers.getUserCurrentDebt(user, debtReserve);
 
@@ -115,6 +119,7 @@ contract LendingPoolCollateralManager is
       return (vars.errorCode, vars.errorMsg);
     }
 
+    console.log('validateLiquidationCall passed');
     vars.collateralAtoken = IAToken(collateralReserve.aTokenAddress);
 
     vars.userCollateralBalance = vars.collateralAtoken.balanceOf(user);
@@ -126,6 +131,8 @@ contract LendingPoolCollateralManager is
     vars.actualDebtToLiquidate = debtToCover > vars.maxLiquidatableDebt
       ? vars.maxLiquidatableDebt
       : debtToCover;
+
+    console.log('vars.actualDebtToLiquidate = %s', MathUtils.uintToDecimal(vars.actualDebtToLiquidate, 18));
 
     (
       vars.maxCollateralToLiquidate,
