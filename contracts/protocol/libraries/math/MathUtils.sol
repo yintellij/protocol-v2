@@ -82,7 +82,7 @@ library MathUtils {
     return calculateCompoundedInterest(rate, lastUpdateTimestamp, block.timestamp);
   }
 
-  function uintToDecimal(uint256 v, uint8 decimals) internal view returns (string memory str) {
+  function uintToDecimal(uint256 v, uint8 decimals) internal pure returns (string memory str) {
     uint maxlength = 100;
     bytes memory reversed = new bytes(maxlength);
     uint i = 0;

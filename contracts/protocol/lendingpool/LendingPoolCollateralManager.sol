@@ -122,8 +122,10 @@ contract LendingPoolCollateralManager is
     console.log('validateLiquidationCall passed');
     vars.collateralAtoken = IAToken(collateralReserve.aTokenAddress);
 
+    // 抵押品的总量
     vars.userCollateralBalance = vars.collateralAtoken.balanceOf(user);
 
+    // 可以进行清算的债务 = 稳定利率借款 / 2
     vars.maxLiquidatableDebt = vars.userStableDebt.add(vars.userVariableDebt).percentMul(
       LIQUIDATION_CLOSE_FACTOR_PERCENT
     );
@@ -144,6 +146,13 @@ contract LendingPoolCollateralManager is
       debtAsset,
       vars.actualDebtToLiquidate,
       vars.userCollateralBalance
+    );
+
+
+    console.log(
+    'maxCollateralToLiquidate = %s, debtAmountNeeded = %s',
+    MathUtils.uintToDecimal(vars.maxCollateralToLiquidate, 18),
+      MathUtils.uintToDecimal(vars.debtAmountNeeded, 18)
     );
 
     // If debtAmountNeeded < actualDebtToLiquidate, there isn't enough
@@ -184,8 +193,11 @@ contract LendingPoolCollateralManager is
           debtReserve.variableBorrowIndex
         );
       }
+
+      // 销毁债务凭证
       IStableDebtToken(debtReserve.stableDebtTokenAddress).burn(
         user,
+        //
         vars.actualDebtToLiquidate.sub(vars.userVariableDebt)
       );
     }
@@ -216,6 +228,7 @@ contract LendingPoolCollateralManager is
       );
 
       // Burn the equivalent amount of aToken, sending the underlying to the liquidator
+      console.log('liquidityIndex = %s', MathUtils.uintToDecimal(collateralReserve.liquidityIndex, 27));
       vars.collateralAtoken.burn(
         user,
         msg.sender,
@@ -291,6 +304,7 @@ contract LendingPoolCollateralManager is
     AvailableCollateralToLiquidateLocalVars memory vars;
 
     vars.collateralPrice = oracle.getAssetPrice(collateralAsset);
+
     vars.debtAssetPrice = oracle.getAssetPrice(debtAsset);
 
     (, , vars.liquidationBonus, vars.collateralDecimals, ) = collateralReserve

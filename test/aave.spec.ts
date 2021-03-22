@@ -2,7 +2,7 @@
 import {waffle} from 'hardhat'
 import {utils} from 'ethers'
 import {expect} from 'chai'
-import {_1_ETH, aaveFixture, getUserData, InterestRateMode, overrides} from "./helpers";
+import {_1_ETH, aaveFixture, getUserData, InterestRateMode, overrides, weiToEther} from "./helpers";
 
 
 
@@ -65,6 +65,12 @@ describe('weth', () => {
         expect((await getUserData(fixture.pool, bob.address)).healthFactor).to.lessThan(1)
 
         // carol wants to execute liquidation on bob
+        console.log('carol eth = ' + weiToEther(await carol.getBalance()))
+        await fixture.weth.asset.connect(carol).deposit({
+            ...overrides,
+            value: utils.parseEther('500')
+        })
+        await fixture.weth.asset.connect(carol).approve(fixture.pool.address, utils.parseEther('500'))
         await fixture.pool.connect(carol)
             .liquidationCall(
                 fixture.weth.asset.address,
@@ -74,6 +80,10 @@ describe('weth', () => {
                 false,
                 overrides
             )
+
+        console.log(weiToEther(await fixture.weth.asset.balanceOf(carol.address)))
+
+        console.log(await getUserData(fixture.pool, bob.address))
     })
 
 })
